@@ -51,7 +51,7 @@ class VideoMerger:
         return True
     
     def merge_with_facility_location(self, frames_dir, output_dir=None):
-        """Merge frames using Facility Location selection."""
+        """Merge frames using Facility Location selection with delta expansion."""
         if output_dir is None:
             output_dir = Config.FL_OUTPUT_DIR
         
@@ -81,14 +81,18 @@ class VideoMerger:
             
             frame_images = [Image.open(f).convert("RGB") for f in frame_files]
             
-            # Extract or load embeddings
+            # Load embeddings (should already exist)
             print(f"[INFO] Processing {subfolder}...")
-            feature_matrix = self.embeddings_extractor.extract_and_store(
-                frame_images, subfolder
-            )
+            feature_matrix = self.embeddings_extractor.load_embeddings(subfolder)
             
-            # Select frames
-            selector = FacilityLocationSelector(budget=self.num_selected)
+            if feature_matrix is None:
+                print(f"[WARN] Embeddings not found for {subfolder}. Computing now...")
+                feature_matrix = self.embeddings_extractor.extract_and_store(
+                    frame_images, subfolder
+                )
+            
+            # Select frames with delta
+            selector = FacilityLocationSelector(budget=self.num_selected, delta=Config.FL_DELTA)
             selected_indices = selector.select(feature_matrix)
             
             # Write video
@@ -123,11 +127,15 @@ class VideoMerger:
             
             frame_images = [Image.open(f).convert("RGB") for f in frame_files]
             
-            # Extract or load embeddings (done once per video)
+            # Load embeddings (should already exist)
             print(f"[INFO] Processing {subfolder}...")
-            feature_matrix = self.embeddings_extractor.extract_and_store(
-                frame_images, subfolder
-            )
+            feature_matrix = self.embeddings_extractor.load_embeddings(subfolder)
+            
+            if feature_matrix is None:
+                print(f"[WARN] Embeddings not found for {subfolder}. Computing now...")
+                feature_matrix = self.embeddings_extractor.extract_and_store(
+                    frame_images, subfolder
+                )
             
             # Try each lambda value
             for lambda_val in lambda_values:

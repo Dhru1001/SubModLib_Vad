@@ -10,14 +10,44 @@ class Config:
     FRAME_INTERVAL = 1
     
     # Frame Selection & Video Merging
-    NUM_SELECTED = 64
+    # --> consider Delta For FL in case of NUM_SELECTED 
+    NUM_SELECTED = 16
     OUTPUT_FPS = 30
     OVERWRITE = True
     
     # Output Folders for Selection Algorithms
-    FL_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_Facility_location"
+    FL_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_Facility_location_16_frames"
     GC_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_Graph_Cut"
     
+    # Facility Location Delta (neighbor offsets to include)
+    # Example:
+    # If delta = [-2, 0, +2] and selected_indices = [102]
+    # Then: 102 + (-2) = 100
+    #       102 + 0 = 102
+    #       102 + (+2) = 104
+    # Result: [100, 101, 102, 103, 104] (sorted and unique)
+    FL_DELTA = [-2, 0, +2]
+
+    '''
+    You can modify it to whatever you want:
+    - `FL_DELTA = [-1, +1]` → Only neighbors, skip center
+    - `FL_DELTA = [-2, -1, 0, +1, +2]` → Wider neighborhood
+    - `FL_DELTA = [0]` → Just original frames (no expansion)
+
+    ## 2. **Facility Location - Delta Expansion**
+    The `_apply_delta()` method:
+    - Takes FL selected frames `[3, 6, 7, 9]`
+    - Applies delta: `[-1, 0, +1]`
+    - Generates: `{2,3,4,5,6,7,6,7,8,8,9,10}`
+    - **Removes duplicates** using set
+    - **Sorts** the result
+    - Returns: `[2,3,4,5,6,7,8,9,10]`
+
+    **Example Output:**
+    [INFO] FL selected frames: [3, 6, 7, 9]
+    [INFO] After delta [-1, 0, +1] expansion: [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    '''
+
     # Graph Cut Lambda Values
     LAMBDA_VALUES = [-0.5, -1.0]
     
