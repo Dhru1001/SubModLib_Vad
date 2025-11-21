@@ -50,6 +50,30 @@ def main(args):
         )
         merger_gc.merge_with_graph_cut(Config.FRAMES_OUTPUT_DIR)
     
+    # Step 4: Merge with Disparity Min
+    if args.step in ["4", "all"]:
+        print("\n[STEP 4] Merging frames using Disparity Min...")
+        print("-" * 70)
+        
+        merger_dm = VideoMerger(
+            num_selected=Config.NUM_SELECTED,
+            fps=Config.OUTPUT_FPS,
+            overwrite=Config.OVERWRITE
+        )
+        merger_dm.merge_with_disparity_min(Config.FRAMES_OUTPUT_DIR)
+    
+    # Step 5: Merge with Disparity Sum
+    if args.step in ["5", "all"]:
+        print("\n[STEP 5] Merging frames using Disparity Sum...")
+        print("-" * 70)
+        
+        merger_ds = VideoMerger(
+            num_selected=Config.NUM_SELECTED,
+            fps=Config.OUTPUT_FPS,
+            overwrite=Config.OVERWRITE
+        )
+        merger_ds.merge_with_disparity_sum(Config.FRAMES_OUTPUT_DIR)
+    
     # Show embeddings database stats
     if args.show_embeddings:
         embeddings_extractor.print_database_stats()
@@ -66,8 +90,8 @@ if __name__ == "__main__":
         "--step",
         type=str,
         default="all",
-        choices=["1", "2", "3", "all"],
-        help="Which pipeline step to run (1=extract, 2=FL, 3=GC, all=all steps)"
+        choices=["1", "2", "3", "4", "5", "all"],
+        help="Which pipeline step to run (1=extract, 2=FL, 3=GC, 4=DM, 5=DS, all=all steps)"
     )
     parser.add_argument(
         "--show-embeddings",

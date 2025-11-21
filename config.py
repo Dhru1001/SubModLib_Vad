@@ -11,13 +11,20 @@ class Config:
     
     # Frame Selection & Video Merging
     # --> consider Delta For FL in case of NUM_SELECTED 
-    NUM_SELECTED = 16
+    NUM_SELECTED = 64
     OUTPUT_FPS = 30
     OVERWRITE = True
+
+    # Delta Expansion Configuration
+    # Set to True to enable delta expansion for FL, DM, DS
+    # Set to False to disable delta expansion (use selected frames as-is)
+    USE_DELTA = False
     
     # Output Folders for Selection Algorithms
     FL_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_Facility_location_16_frames"
     GC_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_Graph_Cut"
+    DM_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_DisparityMin"
+    DS_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_DisparitySum"
     
     # Facility Location Delta (neighbor offsets to include)
     # Example:

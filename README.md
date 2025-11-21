@@ -87,11 +87,11 @@ class Config:
     FRAMES_OUTPUT_DIR = "/path/to/frames"
     EMBEDDINGS_DB_DIR = "/path/to/embeddings"
     
-    # Facility Location Output
+    # Selection Algorithm Output Directories
     FL_OUTPUT_DIR = "/path/to/fl_output"
-    
-    # Graph Cut Output
     GC_OUTPUT_DIR = "/path/to/gc_output"
+    DM_OUTPUT_DIR = "/path/to/dm_output"
+    DS_OUTPUT_DIR = "/path/to/ds_output"
     
     # Processing Parameters
     NUM_SELECTED = 64              # Initial frames to select
@@ -99,7 +99,13 @@ class Config:
     FRAME_INTERVAL = 1             # Extract every nth frame
     OVERWRITE = True               # Overwrite existing outputs
     
-    # Facility Location Delta (frame expansion)
+    # Delta Expansion Configuration
+    # Set to True to enable delta expansion for FL, DM, DS
+    # Set to False to disable delta expansion (use selected frames as-is)
+    USE_DELTA = True
+    
+    # Facility Location Delta (frame expansion range)
+    # Only applied if USE_DELTA = True
     # If delta=[-2, 0, +2] and FL selects frame 102,
     # it expands to [100, 101, 102, 103, 104]
     FL_DELTA = [-1, 0, +1]
@@ -114,19 +120,24 @@ class Config:
 
 ### Key Configuration Parameters
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `NUM_SELECTED` | Frames selected by algorithm (before delta expansion) | `64` |
-| `FL_DELTA` | Range expansion around selected frames | `[-2, 0, +2]` |
-| `LAMBDA_VALUES` | Graph Cut diversity parameters | `[-0.5, -1.0]` |
-| `OUTPUT_FPS` | Output video frame rate | `30` |
-| `CLIP_MODEL` | CLIP model variant | `"ViT-B/16"` |
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `NUM_SELECTED` | int | Frames selected by algorithm (before delta expansion) | `64` |
+| `USE_DELTA` | bool | Enable/disable delta expansion for FL, DM, DS | `True` |
+| `FL_DELTA` | list | Range expansion around selected frames | `[-2, 0, +2]` |
+| `LAMBDA_VALUES` | list | Graph Cut diversity parameters | `[-0.5, -1.0]` |
+| `OUTPUT_FPS` | int | Output video frame rate | `30` |
+| `CLIP_MODEL` | str | CLIP model variant | `"ViT-B/16"` |
+| `FL_OUTPUT_DIR` | str | Facility Location output directory | `/path/to/fl_output` |
+| `GC_OUTPUT_DIR` | str | Graph Cut output directory | `/path/to/gc_output` |
+| `DM_OUTPUT_DIR` | str | Disparity Min output directory | `/path/to/dm_output` |
+| `DS_OUTPUT_DIR` | str | Disparity Sum output directory | `/path/to/ds_output` |
 
 ## Usage
 
 ### Full Pipeline (First Run)
 
-Run all steps: extract frames → compute embeddings → select frames with FL & GC
+Run all steps: extract frames → compute embeddings → select frames with all algorithms
 
 ```bash
 python main.py
@@ -146,6 +157,7 @@ python main.py --step 2
 ```
 Uses pre-computed embeddings (or computes if missing)
 Applies delta expansion to selected frames
+Output: `FL_OUTPUT_DIR`
 
 **Step 3: Graph Cut Selection**
 ```bash
@@ -153,6 +165,23 @@ python main.py --step 3
 ```
 Uses pre-computed embeddings
 Creates videos for each lambda value
+Output: `GC_OUTPUT_DIR/lambda_*/`
+
+**Step 4: Disparity Min Selection**
+```bash
+python main.py --step 4
+```
+Uses pre-computed embeddings
+Maximum diversity selection with delta expansion
+Output: `DM_OUTPUT_DIR`
+
+**Step 5: Disparity Sum Selection**
+```bash
+python main.py --step 5
+```
+Uses pre-computed embeddings
+Balanced diversity selection with delta expansion
+Output: `DS_OUTPUT_DIR`
 
 ### Subsequent Runs (With Pre-computed Embeddings)
 
@@ -164,6 +193,11 @@ python main.py --step 2
 
 # Or just run a specific algorithm
 python main.py --step 3
+python main.py --step 4
+python main.py --step 5
+
+# Run all selection algorithms (skips extraction)
+python main.py --step 2,3,4,5
 ```
 
 ### View Embeddings Database
@@ -190,9 +224,46 @@ Total Videos: 2
 ======================================================================
 ```
 
-## How Delta Expansion Works
+## Selection Algorithms
 
-### Example with FL_DELTA = [-2, 0, +2]
+The pipeline supports **5 different submodular optimization algorithms** for frame selection:
+
+### 1. Facility Location (FL)
+- **Purpose:** Select diverse, representative frames
+- **Method:** Maximizes coverage of feature space
+- **Delta:** Adds neighboring frames around selected ones for temporal continuity
+- **Best For:** Key frame extraction, video summarization
+- **Output:** `FL_OUTPUT_DIR`
+- **Parameters:** `NUM_SELECTED`, `FL_DELTA`
+
+### 2. Graph Cut (GC)
+- **Purpose:** Trade-off between diversity and representativeness
+- **Method:** Submodular optimization with lambda parameter
+- **Lambda:** Controls diversity trade-off (negative values encourage diversity)
+- **Best For:** Flexible frame selection with parameter tuning
+- **Output:** `GC_OUTPUT_DIR/lambda_*/`
+- **Parameters:** `NUM_SELECTED`, `LAMBDA_VALUES`
+
+### 3. Disparity Min (DM)
+- **Purpose:** Maximize frame diversity by minimizing maximum similarity
+- **Method:** Minimizes max similarity between selected and unselected frames
+- **Delta:** Adds neighboring frames around selected ones for temporal continuity
+- **Best For:** Outlier detection, maximum diversity selection
+- **Output:** `DM_OUTPUT_DIR`
+- **Parameters:** `NUM_SELECTED`, `FL_DELTA`
+- **Concept:** Ensures selected frames are maximally dissimilar to unselected frames
+
+### 4. Disparity Sum (DS)
+- **Purpose:** Balanced diversity by minimizing total similarity sum
+- **Method:** Minimizes sum of similarities between selected and unselected frames
+- **Delta:** Adds neighboring frames around selected ones for temporal continuity
+- **Best For:** Balanced diversity, representative sampling
+- **Output:** `DS_OUTPUT_DIR`
+- **Parameters:** `NUM_SELECTED`, `FL_DELTA`
+- **Concept:** Holistically minimizes total affinity to unselected frames
+
+### 5. Custom Combinations
+You can chain multiple algorithms or use them independently for comparison.
 
 **Step 1: Facility Location selects frames**
 ```
@@ -283,6 +354,30 @@ selected_indices = selector.select(feature_matrix, lambda_val=-0.5)
 selector.clear_memoization()
 ```
 
+### DisparityMinSelector
+
+```python
+from functions import DisparityMinSelector
+
+selector = DisparityMinSelector(budget=64, delta=[-1, 0, +1])
+selected_indices = selector.select(feature_matrix)
+
+# Clear submodlib memoization
+selector.clear_memoization()
+```
+
+### DisparitySumSelector
+
+```python
+from functions import DisparitySumSelector
+
+selector = DisparitySumSelector(budget=64, delta=[-1, 0, +1])
+selected_indices = selector.select(feature_matrix)
+
+# Clear submodlib memoization
+selector.clear_memoization()
+```
+
 ### VideoMerger
 
 ```python
@@ -295,6 +390,12 @@ merger.merge_with_facility_location(frames_dir, output_dir)
 
 # Merge with Graph Cut
 merger.merge_with_graph_cut(frames_dir, output_dir, lambda_values=[-0.5, -1.0])
+
+# Merge with Disparity Min
+merger.merge_with_disparity_min(frames_dir, output_dir)
+
+# Merge with Disparity Sum
+merger.merge_with_disparity_sum(frames_dir, output_dir)
 ```
 
 ## Output Structure
@@ -317,17 +418,20 @@ Selected_frames64(usingCLIP)/
 ...
 ```
 
-### Graph Cut Output
+### Disparity Min Output
 ```
-Selected_frames64(GraphCut_Negative_Values)/
-├── lambda_-0.5/
-│   ├── video1_lambda_-0.5.mp4
-│   ├── video2_lambda_-0.5.mp4
-│   ...
-├── lambda_-1.0/
-│   ├── video1_lambda_-1.0.mp4
-│   ├── video2_lambda_-1.0.mp4
-│   ...
+Selected_frames64(DisparityMin)/
+├── video1_selected.mp4
+├── video2_selected.mp4
+...
+```
+
+### Disparity Sum Output
+```
+Selected_frames64(DisparitySum)/
+├── video1_selected.mp4
+├── video2_selected.mp4
+...
 ```
 
 ## Performance Tips
@@ -393,6 +497,30 @@ FL_DELTA = [-3, -1, 0, +1, +3]  # Skip adjacent frames
 
 Output: Sparser frame selection with larger gaps
 
+### Compare All Algorithms
+
+```bash
+# Extract frames once
+python main.py --step 1
+
+# Run all selection algorithms
+python main.py --step 2  # Facility Location
+python main.py --step 3  # Graph Cut
+python main.py --step 4  # Disparity Min
+python main.py --step 5  # Disparity Sum
+
+# Compare outputs in different directories
+```
+
+### Algorithm Comparison Matrix
+
+| Algorithm | Optimization Target | Best For | Output Control |
+|-----------|-------------------|----------|-----------------|
+| Facility Location | Coverage maximization | Key frames, summarization | Budget + Delta |
+| Graph Cut | Diversity trade-off | Flexible selection | Budget + Lambda |
+| Disparity Min | Max diversity (minimize max sim) | Outlier detection | Budget + Delta |
+| Disparity Sum | Balanced diversity (minimize sum) | Representative sampling | Budget + Delta |
+
 ### Multiple Lambda Experiments
 
 ```python
@@ -445,6 +573,13 @@ If you use this pipeline in research, please cite:
 For bugs or feature requests, please refer to the repository issues page.
 
 ## Changelog
+
+### v1.1.0
+- Added DisparityMin selection algorithm
+- Added DisparitySum selection algorithm
+- Support for 5 different selection algorithms
+- Algorithm comparison matrix
+- Updated documentation with new algorithms
 
 ### v1.0.0
 - Initial release
