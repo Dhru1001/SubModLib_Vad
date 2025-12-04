@@ -92,6 +92,7 @@ class Config:
     GC_OUTPUT_DIR = "/path/to/gc_output"
     DM_OUTPUT_DIR = "/path/to/dm_output"
     DS_OUTPUT_DIR = "/path/to/ds_output"
+    FLCG_OUTPUT_DIR = "/path/to/flcg_output"
     
     # Processing Parameters
     NUM_SELECTED = 64              # Initial frames to select
@@ -113,6 +114,12 @@ class Config:
     # Graph Cut Lambda Values (diversity parameters)
     LAMBDA_VALUES = [-0.5, -1.0]
     
+    # Facility Location Conditional Gain Private Set
+    # Indices of frames already selected (conditioning set)
+    # Empty list = standard FL behavior
+    # Example: [0, 10, 20] = condition on frames 0, 10, 20
+    FLCG_PRIVATE_SET = []
+    
     # Model Configuration
     CLIP_MODEL = "ViT-B/16"
     DEVICE = "cuda"  # Auto-switches to CPU if CUDA unavailable
@@ -132,6 +139,8 @@ class Config:
 | `GC_OUTPUT_DIR` | str | Graph Cut output directory | `/path/to/gc_output` |
 | `DM_OUTPUT_DIR` | str | Disparity Min output directory | `/path/to/dm_output` |
 | `DS_OUTPUT_DIR` | str | Disparity Sum output directory | `/path/to/ds_output` |
+| `FLCG_OUTPUT_DIR` | str | FL Conditional Gain output directory | `/path/to/flcg_output` |
+| `FLCG_PRIVATE_SET` | list | Private set for FLCG (already selected frames) | `[0, 10, 20]` |
 
 ## Usage
 
@@ -183,6 +192,14 @@ Uses pre-computed embeddings
 Balanced diversity selection with delta expansion
 Output: `DS_OUTPUT_DIR`
 
+**Step 6: Facility Location Conditional Gain Selection**
+```bash
+python main.py --step 6
+```
+Uses pre-computed embeddings
+Incremental selection based on private set with delta expansion
+Output: `FLCG_OUTPUT_DIR`
+
 ### Subsequent Runs (With Pre-computed Embeddings)
 
 After embeddings are stored, re-running is instant:
@@ -226,20 +243,21 @@ Total Videos: 2
 
 ## Selection Algorithms
 
-The pipeline supports **5 different submodular optimization algorithms** for frame selection:
+The pipeline supports **6 different submodular optimization algorithms** for frame selection:
 
 ### 1. Facility Location (FL)
 - **Purpose:** Select diverse, representative frames
 - **Method:** Maximizes coverage of feature space
-- **Delta:** Adds neighboring frames around selected ones for temporal continuity
+- **Delta:** Optional - adds neighboring frames around selected ones for temporal continuity
 - **Best For:** Key frame extraction, video summarization
 - **Output:** `FL_OUTPUT_DIR`
-- **Parameters:** `NUM_SELECTED`, `FL_DELTA`
+- **Parameters:** `NUM_SELECTED`, `FL_DELTA`, `USE_DELTA`
 
 ### 2. Graph Cut (GC)
 - **Purpose:** Trade-off between diversity and representativeness
 - **Method:** Submodular optimization with lambda parameter
 - **Lambda:** Controls diversity trade-off (negative values encourage diversity)
+- **Delta:** Not used (no delta expansion)
 - **Best For:** Flexible frame selection with parameter tuning
 - **Output:** `GC_OUTPUT_DIR/lambda_*/`
 - **Parameters:** `NUM_SELECTED`, `LAMBDA_VALUES`
@@ -247,22 +265,32 @@ The pipeline supports **5 different submodular optimization algorithms** for fra
 ### 3. Disparity Min (DM)
 - **Purpose:** Maximize frame diversity by minimizing maximum similarity
 - **Method:** Minimizes max similarity between selected and unselected frames
-- **Delta:** Adds neighboring frames around selected ones for temporal continuity
+- **Delta:** Optional - adds neighboring frames around selected ones for temporal continuity
 - **Best For:** Outlier detection, maximum diversity selection
 - **Output:** `DM_OUTPUT_DIR`
-- **Parameters:** `NUM_SELECTED`, `FL_DELTA`
+- **Parameters:** `NUM_SELECTED`, `FL_DELTA`, `USE_DELTA`
 - **Concept:** Ensures selected frames are maximally dissimilar to unselected frames
 
 ### 4. Disparity Sum (DS)
 - **Purpose:** Balanced diversity by minimizing total similarity sum
 - **Method:** Minimizes sum of similarities between selected and unselected frames
-- **Delta:** Adds neighboring frames around selected ones for temporal continuity
+- **Delta:** Optional - adds neighboring frames around selected ones for temporal continuity
 - **Best For:** Balanced diversity, representative sampling
 - **Output:** `DS_OUTPUT_DIR`
-- **Parameters:** `NUM_SELECTED`, `FL_DELTA`
+- **Parameters:** `NUM_SELECTED`, `FL_DELTA`, `USE_DELTA`
 - **Concept:** Holistically minimizes total affinity to unselected frames
 
-### 5. Custom Combinations
+### 5. Facility Location Conditional Gain (FLCG)
+- **Purpose:** Select frames that complement an existing set (incremental selection)
+- **Method:** Maximizes coverage gain given a private set of already selected frames
+- **Delta:** Optional - adds neighboring frames around selected ones for temporal continuity
+- **Best For:** Incremental selection, query-focused summarization, conditional diversity
+- **Output:** `FLCG_OUTPUT_DIR`
+- **Parameters:** `NUM_SELECTED`, `FL_DELTA`, `USE_DELTA`, `FLCG_PRIVATE_SET`
+- **Concept:** Finds frames that provide maximum additional coverage beyond the private set
+- **Private Set:** Indices of frames already selected (e.g., `[0, 10, 20]`). Empty list means standard FL behavior
+
+### 6. Custom Combinations
 You can chain multiple algorithms or use them independently for comparison.
 
 **Step 1: Facility Location selects frames**
@@ -378,6 +406,24 @@ selected_indices = selector.select(feature_matrix)
 selector.clear_memoization()
 ```
 
+### FacilityLocationConditionalGainSelector
+
+```python
+from functions import FacilityLocationConditionalGainSelector
+
+# Without private set (behaves like standard FL)
+selector = FacilityLocationConditionalGainSelector(budget=64, delta=[-1, 0, +1])
+selected_indices = selector.select(feature_matrix)
+
+# With private set (incremental selection)
+private_set = [0, 10, 20, 30]  # Already selected frames
+selector = FacilityLocationConditionalGainSelector(budget=64, delta=[-1, 0, +1])
+selected_indices = selector.select(feature_matrix, private_set=private_set)
+
+# Clear submodlib memoization
+selector.clear_memoization()
+```
+
 ### VideoMerger
 
 ```python
@@ -396,6 +442,9 @@ merger.merge_with_disparity_min(frames_dir, output_dir)
 
 # Merge with Disparity Sum
 merger.merge_with_disparity_sum(frames_dir, output_dir)
+
+# Merge with FL Conditional Gain
+merger.merge_with_fl_conditional_gain(frames_dir, output_dir, private_set=[0, 10, 20])
 ```
 
 ## Output Structure
@@ -429,6 +478,14 @@ Selected_frames64(DisparityMin)/
 ### Disparity Sum Output
 ```
 Selected_frames64(DisparitySum)/
+├── video1_selected.mp4
+├── video2_selected.mp4
+...
+```
+
+### FL Conditional Gain Output
+```
+Selected_frames64(FLConditionalGain)/
 ├── video1_selected.mp4
 ├── video2_selected.mp4
 ...
@@ -573,6 +630,12 @@ If you use this pipeline in research, please cite:
 For bugs or feature requests, please refer to the repository issues page.
 
 ## Changelog
+
+### v1.2.0
+- Added Facility Location Conditional Gain algorithm
+- Support for private set (conditioning frames)
+- Incremental selection capability
+- 6 total selection algorithms now available
 
 ### v1.1.0
 - Added DisparityMin selection algorithm

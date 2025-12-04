@@ -5,8 +5,9 @@ import os
 
 class Config:
     # Frame Extraction
-    VIDEOS_DIR = "/backup/palak/VAD/VERA/UCF_Dummy_Dataset"
-    FRAMES_OUTPUT_DIR = "/backup/palak/SubModLib/data/UCF_Dummy_Dataset_Frames"
+    # VIDEOS_DIR = "/backup/palak/VAD/VERA/UCF_Dummy_Dataset"
+    VIDEOS_DIR = "/backup/palak/SubModLib/adc"
+    FRAMES_OUTPUT_DIR = "/backup/palak/SubModLib/data/abuseframes"
     FRAME_INTERVAL = 1
     
     # Frame Selection & Video Merging
@@ -25,6 +26,7 @@ class Config:
     GC_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_Graph_Cut"
     DM_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_DisparityMin"
     DS_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_DisparitySum"
+    FLCG_OUTPUT_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_FLConditionalGain"
     
     # Facility Location Delta (neighbor offsets to include)
     # Example:
@@ -55,11 +57,18 @@ class Config:
     [INFO] After delta [-1, 0, +1] expansion: [2, 3, 4, 5, 6, 7, 8, 9, 10]
     '''
 
+
+    # Facility Location Conditional Gain Private Set
+    # Indices of frames to use as "private set" (conditioning frames)
+    # Empty list means no conditioning (standard FL behavior)
+    # Example: [0, 10, 20] means condition on frames 0, 10, 20
+    FLCG_PRIVATE_SET = []  # Empty by default
+
     # Graph Cut Lambda Values
-    LAMBDA_VALUES = [-0.5, -1.0]
+    LAMBDA_VALUES = [-25, -30, -50]
     
     # Embeddings Configuration
-    EMBEDDINGS_DB_DIR = "/backup/palak/SubModLib/data/Dummmy_Data_Embeddings_DB"
+    EMBEDDINGS_DB_DIR = "/backup/palak/SubModLib/data/abuseembeddings"
     
     # Device
     DEVICE = "cuda"  # will be set to cpu if cuda not available

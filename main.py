@@ -74,6 +74,18 @@ def main(args):
         )
         merger_ds.merge_with_disparity_sum(Config.FRAMES_OUTPUT_DIR)
     
+    # Step 6: Merge with FL Conditional Gain
+    if args.step in ["6", "all"]:
+        print("\n[STEP 6] Merging frames using FL Conditional Gain...")
+        print("-" * 70)
+        
+        merger_flcg = VideoMerger(
+            num_selected=Config.NUM_SELECTED,
+            fps=Config.OUTPUT_FPS,
+            overwrite=Config.OVERWRITE
+        )
+        merger_flcg.merge_with_fl_conditional_gain(Config.FRAMES_OUTPUT_DIR)
+    
     # Show embeddings database stats
     if args.show_embeddings:
         embeddings_extractor.print_database_stats()
@@ -90,8 +102,8 @@ if __name__ == "__main__":
         "--step",
         type=str,
         default="all",
-        choices=["1", "2", "3", "4", "5", "all"],
-        help="Which pipeline step to run (1=extract, 2=FL, 3=GC, 4=DM, 5=DS, all=all steps)"
+        choices=["1", "2", "3", "4", "5", "6", "all"],
+        help="Which pipeline step to run (1=extract, 2=FL, 3=GC, 4=DM, 5=DS, 6=FLCG, all=all steps)"
     )
     parser.add_argument(
         "--show-embeddings",

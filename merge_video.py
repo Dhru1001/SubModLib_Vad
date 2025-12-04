@@ -11,7 +11,8 @@ from functions import (
     FacilityLocationSelector,
     GraphCutSelector,
     DisparityMinSelector,
-    DisparitySumSelector
+    DisparitySumSelector,
+    FacilityLocationConditionalGainSelector
 )
 
 class VideoMerger:
@@ -97,8 +98,64 @@ class VideoMerger:
                 )
             
             # Select frames with delta
-            selector = FacilityLocationSelector(budget=self.num_selected, delta=Config.FL_DELTA)
+            selector = FacilityLocationSelector(budget=self.num_selected, delta=Config.FL_DELTA, use_delta=Config.USE_DELTA)
             selected_indices = selector.select(feature_matrix)
+            
+            # Write video
+            if self._write_video(out_video_path, frame_images, selected_indices):
+                print(f"[SUCCESS] Saved: {out_video_path}")
+    
+    def merge_with_fl_conditional_gain(self, frames_dir, output_dir=None, private_set=None):
+        """Merge frames using Facility Location Conditional Gain selection."""
+        if output_dir is None:
+            output_dir = Config.FLCG_OUTPUT_DIR
+        
+        if private_set is None:
+            private_set = Config.FLCG_PRIVATE_SET
+        
+        os.makedirs(output_dir, exist_ok=True)
+        
+        for subfolder in sorted(os.listdir(frames_dir)):
+            subfolder_path = os.path.join(frames_dir, subfolder)
+            if not os.path.isdir(subfolder_path):
+                continue
+            
+            out_video_path = os.path.join(output_dir, f"{subfolder}_selected.mp4")
+            
+            if os.path.exists(out_video_path) and not self.overwrite:
+                print(f"[SKIP] Output exists: {out_video_path}")
+                continue
+            
+            # Load frames
+            frame_files = sorted([
+                os.path.join(subfolder_path, f)
+                for f in os.listdir(subfolder_path)
+                if f.lower().endswith(Config.IMAGE_EXTENSIONS)
+            ])
+            
+            if not frame_files:
+                print(f"[WARN] No frames in {subfolder_path}")
+                continue
+            
+            frame_images = [Image.open(f).convert("RGB") for f in frame_files]
+            
+            # Load embeddings (should already exist)
+            print(f"[INFO] Processing {subfolder}...")
+            feature_matrix = self.embeddings_extractor.load_embeddings(subfolder)
+            
+            if feature_matrix is None:
+                print(f"[WARN] Embeddings not found for {subfolder}. Computing now...")
+                feature_matrix = self.embeddings_extractor.extract_and_store(
+                    frame_images, subfolder
+                )
+            
+            # Select frames with FLCG
+            selector = FacilityLocationConditionalGainSelector(
+                budget=self.num_selected,
+                delta=Config.FL_DELTA,
+                use_delta=Config.USE_DELTA
+            )
+            selected_indices = selector.select(feature_matrix, private_set=private_set)
             
             # Write video
             if self._write_video(out_video_path, frame_images, selected_indices):
@@ -207,7 +264,7 @@ class VideoMerger:
                 )
             
             # Select frames with delta
-            selector = DisparityMinSelector(budget=self.num_selected, delta=Config.FL_DELTA)
+            selector = DisparityMinSelector(budget=self.num_selected, delta=Config.FL_DELTA, use_delta=Config.USE_DELTA)
             selected_indices = selector.select(feature_matrix)
             
             # Write video
@@ -256,7 +313,7 @@ class VideoMerger:
                 )
             
             # Select frames with delta
-            selector = DisparitySumSelector(budget=self.num_selected, delta=Config.FL_DELTA)
+            selector = DisparitySumSelector(budget=self.num_selected, delta=Config.FL_DELTA, use_delta=Config.USE_DELTA)
             selected_indices = selector.select(feature_matrix)
             
             # Write video
