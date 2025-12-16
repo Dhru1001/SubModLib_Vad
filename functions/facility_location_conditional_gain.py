@@ -3,12 +3,13 @@
 # ============================================================================
 from submodlib.functions.facilityLocationConditionalGain import FacilityLocationConditionalGainFunction
 from config import Config
+import numpy as np
 
 class FacilityLocationConditionalGainSelector:
     """Frame selection using Facility Location Conditional Gain submodular function.
     
     Facility Location Conditional Gain selects frames that provide maximum coverage
-    gain given a set of already selected frames (private set). This is useful for
+    gain given a set of already selected frames (private data). This is useful for
     incremental selection where you want to find frames that complement an existing
     selection.
     
@@ -60,41 +61,44 @@ class FacilityLocationConditionalGainSelector:
         # Sort and return as list
         return sorted(list(expanded_indices))
     
-    def select(self, feature_matrix, private_set=None):
+    def select(self, feature_matrix, private_feature_matrix=None):
         """
         Select frames using Facility Location Conditional Gain with optional delta expansion.
         
         Args:
-            feature_matrix: np.ndarray of shape (n_frames, feature_dim)
-            private_set: list of indices already selected (optional)
-                        If None, an empty set is used
+            feature_matrix: np.ndarray of shape (n_frames, feature_dim) - public data
+            private_feature_matrix: np.ndarray of shape (n_private, feature_dim) - private data
+                                   Features of already selected frames
+                                   If None, behaves like standard FL
             
         Returns:
             selected_indices: sorted list of selected frame indices
         """
-        # Initialize private set
-        if private_set is None:
-            private_set = []
-        
         try:
-            self.flcg_function = FacilityLocationConditionalGainFunction(
-                n=len(feature_matrix),
-                mode="dense",
-                data=feature_matrix,
-                metric=self.metric,
-                privacyHardness=0  # No privacy constraint
-            )
+            # Create FLCG function with private data
+            if private_feature_matrix is not None and len(private_feature_matrix) > 0:
+                print(f"[INFO] FLCG using private data with {len(private_feature_matrix)} frames")
+                self.flcg_function = FacilityLocationConditionalGainFunction(
+                    n=len(feature_matrix),
+                    num_privates=len(private_feature_matrix),
+                    data=feature_matrix,
+                    privateData=private_feature_matrix,
+                    metric=self.metric
+                )
+            else:
+                print(f"[INFO] FLCG with no private data (behaves like standard FL)")
+                # No private data - behaves like standard FL
+                self.flcg_function = FacilityLocationConditionalGainFunction(
+                    n=len(feature_matrix),
+                    num_privates=0,
+                    data=feature_matrix,
+                    metric=self.metric
+                )
             
-            # Set the private set (conditioning set)
-            if private_set:
-                print(f"[INFO] FLCG using private set: {private_set}")
-                # Note: submodlib expects private set to be set via the function
-                # The maximize function will consider this private set
-            
+            # Maximize (no private set in maximize - it's already in the constructor)
             selected = self.flcg_function.maximize(
                 budget=self.budget, 
-                optimizer="NaiveGreedy",
-                privacySet=private_set  # Provide private set here
+                optimizer="NaiveGreedy"
             )
             selected_indices = sorted([t[0] for t in selected])
             

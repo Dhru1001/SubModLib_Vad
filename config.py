@@ -5,9 +5,9 @@ import os
 
 class Config:
     # Frame Extraction
-    # VIDEOS_DIR = "/backup/palak/VAD/VERA/UCF_Dummy_Dataset"
-    VIDEOS_DIR = "/backup/palak/SubModLib/adc"
-    FRAMES_OUTPUT_DIR = "/backup/palak/SubModLib/data/abuseframes"
+    VIDEOS_DIR = "/backup/palak/VAD/VERA/UCF_Dummy_Dataset"
+    # VIDEOS_DIR = "/backup/palak/SubModLib/adc"
+    FRAMES_OUTPUT_DIR = "/backup/palak/SubModLib/data/UCF_Dummy_Dataset_Frames"
     FRAME_INTERVAL = 1
     
     # Frame Selection & Video Merging
@@ -35,7 +35,7 @@ class Config:
     #       102 + 0 = 102
     #       102 + (+2) = 104
     # Result: [100, 101, 102, 103, 104] (sorted and unique)
-    FL_DELTA = [-2, 0, +2]
+    FL_DELTA = [0]
 
     '''
     You can modify it to whatever you want:
@@ -56,19 +56,24 @@ class Config:
     [INFO] FL selected frames: [3, 6, 7, 9]
     [INFO] After delta [-1, 0, +1] expansion: [2, 3, 4, 5, 6, 7, 8, 9, 10]
     '''
-
-
     # Facility Location Conditional Gain Private Set
-    # Indices of frames to use as "private set" (conditioning frames)
-    # Empty list means no conditioning (standard FL behavior)
-    # Example: [0, 10, 20] means condition on frames 0, 10, 20
-    FLCG_PRIVATE_SET = []  # Empty by default
+    # Path to folder containing private frames (already selected frames)
+    # Empty string means no private data (standard FL behavior)
+    # Example: "/path/to/private/frames" - folder with selected key frames
+    FLCG_PRIVATE_FRAMES_DIR = "/backup/palak/SubModLib/data/private_set_normal"  # Empty by default
+
+    # Feature Extraction Method
+    # Options: "clip" or "numpy"
+    # "clip" - Uses OpenAI CLIP embeddings (deep learning features)
+    # "numpy" - Uses raw pixel values as features (simple, fast)
+    FEATURE_TYPE = "clip"  # Default: CLIP embeddings
+
 
     # Graph Cut Lambda Values
     LAMBDA_VALUES = [-25, -30, -50]
     
     # Embeddings Configuration
-    EMBEDDINGS_DB_DIR = "/backup/palak/SubModLib/data/abuseembeddings"
+    EMBEDDINGS_DB_DIR = "/backup/palak/SubModLib/data/Dummy_Data_clip_Embeddings_DB"
     
     # Device
     DEVICE = "cuda"  # will be set to cpu if cuda not available

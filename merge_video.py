@@ -105,13 +105,23 @@ class VideoMerger:
             if self._write_video(out_video_path, frame_images, selected_indices):
                 print(f"[SUCCESS] Saved: {out_video_path}")
     
-    def merge_with_fl_conditional_gain(self, frames_dir, output_dir=None, private_set=None):
+    def merge_with_fl_conditional_gain(self, frames_dir, output_dir=None, private_frames_dir=None):
         """Merge frames using Facility Location Conditional Gain selection."""
         if output_dir is None:
             output_dir = Config.FLCG_OUTPUT_DIR
         
-        if private_set is None:
-            private_set = Config.FLCG_PRIVATE_SET
+        if private_frames_dir is None:
+            private_frames_dir = Config.FLCG_PRIVATE_FRAMES_DIR
+        
+        # Load private data if specified
+        private_feature_matrix = None
+        if private_frames_dir and os.path.exists(private_frames_dir):
+            print(f"[INFO] Loading private frames from: {private_frames_dir}")
+            private_feature_matrix = self.embeddings_extractor.load_embeddings_from_folder(private_frames_dir)
+        else:
+            if private_frames_dir:
+                print(f"[WARN] Private frames directory not found: {private_frames_dir}")
+            print("[INFO] No private data - FLCG will behave like standard FL")
         
         os.makedirs(output_dir, exist_ok=True)
         
@@ -155,7 +165,7 @@ class VideoMerger:
                 delta=Config.FL_DELTA,
                 use_delta=Config.USE_DELTA
             )
-            selected_indices = selector.select(feature_matrix, private_set=private_set)
+            selected_indices = selector.select(feature_matrix, private_feature_matrix=private_feature_matrix)
             
             # Write video
             if self._write_video(out_video_path, frame_images, selected_indices):
