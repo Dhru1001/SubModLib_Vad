@@ -55,7 +55,7 @@ video-processing-repo/
 
 ```bash
 git clone <repository-url>
-cd video-processing-repo
+cd <repository-name>
 ```
 
 ### 2. Create Virtual Environment
@@ -76,72 +76,10 @@ conda activate submodenv # For Conda
 pip install git+https://github.com/decile-team/submodlib.git
 ```
 
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### requirements.txt
-
-```
-torch>=1.9.0
-torchvision>=0.10.0
-opencv-python>=4.5.0
-Pillow>=8.0.0
-numpy>=1.19.0
-clip @ git+https://github.com/openai/CLIP.git
-submodlib>=1.1.1
-```
 
 ## Configuration
 
 Edit `config.py` to customize all parameters:
-
-```python
-class Config:
-    # Input/Output Paths
-    VIDEOS_DIR = "/path/to/videos"
-    FRAMES_OUTPUT_DIR = "/path/to/frames"
-    EMBEDDINGS_DB_DIR = "/path/to/embeddings"
-    
-    # Selection Algorithm Output Directories
-    FL_OUTPUT_DIR = "/path/to/fl_output"
-    GC_OUTPUT_DIR = "/path/to/gc_output"
-    DM_OUTPUT_DIR = "/path/to/dm_output"
-    DS_OUTPUT_DIR = "/path/to/ds_output"
-    FLCG_OUTPUT_DIR = "/path/to/flcg_output"
-    
-    # Processing Parameters
-    NUM_SELECTED = 64              # Initial frames to select
-    OUTPUT_FPS = 30                # Output video frame rate
-    FRAME_INTERVAL = 1             # Extract every nth frame
-    OVERWRITE = True               # Overwrite existing outputs
-    
-    # Delta Expansion Configuration
-    # Set to True to enable delta expansion for FL, DM, DS
-    # Set to False to disable delta expansion (use selected frames as-is)
-    USE_DELTA = True
-    
-    # Facility Location Delta (frame expansion range)
-    # Only applied if USE_DELTA = True
-    # If delta=[-2, 0, +2] and FL selects frame 102,
-    # it expands to [100, 101, 102, 103, 104]
-    FL_DELTA = [-1, 0, +1]
-    
-    # Graph Cut Lambda Values (diversity parameters)
-    LAMBDA_VALUES = [-0.5, -1.0]
-    
-    # Facility Location Conditional Gain Private Set
-    # Indices of frames already selected (conditioning set)
-    # Empty list = standard FL behavior
-    # Example: [0, 10, 20] = condition on frames 0, 10, 20
-    FLCG_PRIVATE_SET = []
-    
-    # Model Configuration
-    CLIP_MODEL = "ViT-B/16"
-    DEVICE = "cuda"  # Auto-switches to CPU if CUDA unavailable
-```
 
 ### Key Configuration Parameters
 
@@ -302,7 +240,7 @@ The pipeline supports **6 different submodular optimization algorithms** for fra
 - **Purpose:** Select frames that complement an existing set (incremental selection)
 - **Method:** Maximizes coverage gain given a private set of already selected frames
 - **Delta:** Optional - adds neighboring frames around selected ones for temporal continuity
-- **Best For:** Incremental selection, query-focused summarization, conditional diversity
+- **Best For:** Incremental selection, query-irrelevent summarization, conditional diversity
 - **Output:** `FLCG_OUTPUT_DIR`
 - **Parameters:** `NUM_SELECTED`, `FL_DELTA`, `USE_DELTA`, `FLCG_PRIVATE_SET`
 - **Concept:** Finds frames that provide maximum additional coverage beyond the private set
@@ -324,11 +262,6 @@ Selected: [3, 6, 7, 9]
 9 + [-2, 0, +2] → [7, 8, 9, 10, 11]
 ```
 
-**Step 3: Deduplicate and sort**
-```
-Result: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-Total frames: 11
-```
 
 ### Controlling Final Frame Count
 
@@ -542,7 +475,7 @@ Selected_frames64(FLConditionalGain)/
 **Solution:** Check video format is in `VIDEO_EXTENSIONS` and path is correct
 
 ### Issue: Graph Cut Selection Fails
-**Solution:** Verify `LAMBDA_VALUES` are appropriate (typically negative for diversity)
+**Solution:** Verify `LAMBDA_VALUES` are appropriate
 
 ### Issue: Output Video Won't Play
 **Solution:** Ensure all selected frame indices are within valid range; check frame count
@@ -605,12 +538,7 @@ LAMBDA_VALUES = [-0.1, -0.5, -1.0, -2.0]  # More lambda values
 
 Creates separate videos for each lambda parameter
 
-### Different Models
 
-```python
-# In config.py
-CLIP_MODEL = "ViT-L/14"  # Larger model, slower but better features
-```
 
 ## Dependencies
 
@@ -626,7 +554,7 @@ CLIP_MODEL = "ViT-L/14"  # Larger model, slower but better features
 
 ## System Requirements
 
-- **Python:** 3.8+
+- **Python:** 3.10+
 - **RAM:** 8GB+ (16GB+ recommended)
 - **VRAM:** 4GB+ (for GPU acceleration, optional)
 - **Disk:** Sufficient space for frames and videos
@@ -670,5 +598,4 @@ For bugs or feature requests, please refer to the repository issues page.
 
 ---
 
-**Last Updated:** November 2024  
-**Status:** Production Ready
+**Last Updated:** December 2025  
