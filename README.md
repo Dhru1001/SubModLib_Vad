@@ -2,6 +2,13 @@
 
 A comprehensive Python pipeline for extracting frames from videos, computing CLIP embeddings, and selecting representative frames using submodular optimization techniques (Facility Location & Graph Cut). Includes intelligent embeddings storage and delta-based frame expansion.
 
+## Doc Refrences
+
+If you use this pipeline in research, please checkout the docs:
+
+- CLIP: https://huggingface.co/docs/transformers/en/model_doc/clip
+- SubmodLib: https://submodlib.readthedocs.io/en/latest/index.html
+
 ## Features
 
 ✅ **Multi-stage Pipeline**
@@ -55,7 +62,18 @@ cd video-processing-repo
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # For Virtual: venv\Scripts\activate
+```
+
+```bash
+# Create conda environment
+conda env create -f environment.yml
+
+# Activate environment
+conda activate submodenv # For Conda 
+
+# Install submodlib from GitHub
+pip install git+https://github.com/decile-team/submodlib.git
 ```
 
 ### 3. Install Dependencies

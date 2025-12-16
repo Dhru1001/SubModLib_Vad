@@ -1,22 +1,15 @@
 name: submodenv
 channels:
-  - pytorch
-  - conda-forge
   - defaults
-
 dependencies:
-  - python=3.10
-  - pip
   - numpy
   - opencv
+  - torchaudio
   - pillow
+  - pip
   - pytorch
   - torchvision
-  - torchaudio
   - tqdm
-  - pip:
-      - transformers
-      - ftfy
-      - regex
-      - git+https://github.com/openai/CLIP.git
-      - git+https://github.com/decile-team/submodlib.git
+  - python=3.10
+prefix: /backup/palak/miniconda3/envs/submodenv
+
